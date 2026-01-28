@@ -1,6 +1,6 @@
 # Microservice VCC Assignment
 
-A three-service microservice architecture with API Gateway pattern built with Node.js for VCC assignment demonstrating VM networking and service deployment.
+A three-service microservice architecture with API Gateway pattern built with Node.js for VCC assignment.
 
 ## 🏗️ Architecture
 
@@ -17,7 +17,7 @@ This project consists of three independent microservices following the API Gatew
                            │ All requests go through gateway
                            ▼
               ┌────────────────────────┐
-              │    API Gateway VM      │
+              │    API Gateway         │
               │    Port: 3000          │
               └────────┬───────────────┘
                        │
@@ -25,7 +25,6 @@ This project consists of three independent microservices following the API Gatew
           │                         │
           ▼                         ▼
 ┌─────────────────┐       ┌─────────────────┐
-│ VM 1            │       │ VM 2            │
 │ User Service◄───┼───────┤ Product Service │
 │ Port: 3001      │       │ Port: 3002      │
 └─────────────────┘       └─────────────────┘
@@ -33,12 +32,11 @@ This project consists of three independent microservices following the API Gatew
 
 ## 📋 Prerequisites
 
-- VirtualBox installed on host machine
-- Ubuntu Server (recommended) or any Linux distribution on VMs
-- Node.js 18+ installed on all VMs
+- Ubuntu Server (recommended) or any Linux distribution
+- Node.js 18+ installed
 - Basic understanding of REST APIs and networking
 
-## 🚀 Quick Start (Local Testing)
+## 🚀 How to Start Services
 
 ### 1. Clone the Repository
 
@@ -47,7 +45,7 @@ git clone <your-repo-url>
 cd microservice-vcc
 ```
 
-### 2. Start User Service (in terminal 1)
+### 2. Start User Service
 
 ```bash
 cd user-service
@@ -55,36 +53,42 @@ npm install
 npm start
 ```
 
-User Service will run on `http://localhost:3001`
+User Service will run on port `3001`
 
-### 3. Start Product Service (in terminal 2)
+### 3. Start Product Service
 
 ```bash
 cd product-service
 npm install
+
+# Set User Service URL (if running on different servers)
+export USER_SERVICE_URL=http://<user-service-ip>:3001
+
 npm start
 ```
 
-Product Service will run on `http://localhost:3002`
+Product Service will run on port `3002`
 
-### 4. Start API Gateway (in terminal 3)
+### 4. Start API Gateway
 
 ```bash
 cd api-gateway
 npm install
+
+# Set backend service URLs (if running on different servers)
+export USER_SERVICE_URL=http://<user-service-ip>:3001
+export PRODUCT_SERVICE_URL=http://<product-service-ip>:3002
+
 npm start
 ```
 
-API Gateway will run on `http://localhost:3000`
+API Gateway will run on port `3000`
 
-### 5. Test the API Gateway (single interface for all requests)
+### 5. Test the Services
 
 ```bash
 # Check gateway health
 curl http://localhost:3000/health
-
-# Get welcome message
-curl http://localhost:3000/
 
 # Get all users (via gateway)
 curl http://localhost:3000/api/users
@@ -92,10 +96,10 @@ curl http://localhost:3000/api/users
 # Get all products (via gateway)
 curl http://localhost:3000/api/products
 
-# SPECIAL: Dashboard - aggregates data from both services
+# Dashboard - aggregates data from both services
 curl http://localhost:3000/api/dashboard
 
-# SPECIAL: Get user with their products
+# Get user with their products
 curl http://localhost:3000/api/users/1/products
 ```
 
@@ -205,152 +209,203 @@ curl -X POST http://localhost:3002/api/products \
 curl http://localhost:3002/api/products/1/with-owner
 ```
 
-## 🖥️ VM Deployment Guide
 
-### Step 1: Create VMs in VirtualBox
+## � How API Gateway Gets Service IP Addresses
 
-1. Create two Ubuntu Server VMs:
-   - **VM1**: user-service-vm (1GB RAM, 10GB storage)
-   - **VM2**: product-service-vm (1GB RAM, 10GB storage)
+The API Gateway needs to know where the User Service and Product Service are running to route requests correctly. This is configured using environment variables:
 
-2. Configure Network:
-   - **Option A (Recommended)**: Use NAT Network
-     - VirtualBox → Tools → Network Manager → NAT Networks → Create
-     - Name: microservice-network, Network: 10.0.2.0/24
-     - Attach both VMs to this network
-   
-   - **Option B**: Use Host-Only Network
-     - Create host-only adapter in VirtualBox settings
-     - Assign static IPs to both VMs
+### Environment Variables Configuration
 
-### Step 2: Install Node.js on Both VMs
+#### API Gateway Service Discovery
+
+The API Gateway uses the following environment variables to discover backend services:
 
 ```bash
-# SSH into each VM and run:
-sudo apt update
-sudo apt install -y curl
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-node --version  # Should show v18.x.x
+USER_SERVICE_URL=http://<user-service-ip>:3001
+PRODUCT_SERVICE_URL=http://<product-service-ip>:3002
 ```
 
-### Step 3: Transfer Code to VMs
+**Default Behavior (Local Development):**
+- If environment variables are not set, the API Gateway defaults to `localhost`:
+  - User Service: `http://localhost:3001`
+  - Product Service: `http://localhost:3002`
 
-**Option A: Use Git (Recommended)**
-```bash
-# On each VM
-git clone <your-github-repo-url>
-cd microservice-vcc
-```
-
-**Option B: Use SCP from host**
-```bash
-# From host machine
-scp -r user-service username@<VM1-IP>:~/
-scp -r product-service username@<VM2-IP>:~/
-```
-
-### Step 4: Deploy User Service on VM1
+**Distributed Deployment:**
+- When services run on different servers, you must set environment variables with actual IP addresses:
 
 ```bash
-# SSH into VM1
-cd user-service
-npm install
+# Example: Services running on different servers
+export USER_SERVICE_URL=http://192.168.1.10:3001
+export PRODUCT_SERVICE_URL=http://192.168.1.11:3002
+
+cd api-gateway
 npm start
 ```
 
-To run as background service:
-```bash
-# Install PM2 process manager
-sudo npm install -g pm2
+#### Product Service to User Service Communication
 
-# Start service
+The Product Service also needs to communicate with the User Service for features like getting product owner information:
+
+```bash
+USER_SERVICE_URL=http://<user-service-ip>:3001
+```
+
+**Example:**
+
+```bash
+# On the server running Product Service
+export USER_SERVICE_URL=http://192.168.1.10:3001
+
+cd product-service
+npm start
+```
+
+### Service Discovery Methods
+
+1. **Environment Variables (Current Implementation)**
+   - Simple and straightforward
+   - Set at service startup time
+   - Good for small-scale deployments
+
+2. **Future Enhancements (Not Implemented)**
+   - Service Registry (e.g., Consul, Eureka)
+   - DNS-based discovery
+   - Kubernetes Service Discovery
+
+### Configuration File Example
+
+You can also create a `.env` file in each service directory:
+
+**api-gateway/.env:**
+```env
+USER_SERVICE_URL=http://192.168.1.10:3001
+PRODUCT_SERVICE_URL=http://192.168.1.11:3002
+PORT=3000
+```
+
+**product-service/.env:**
+```env
+USER_SERVICE_URL=http://192.168.1.10:3001
+PORT=3002
+```
+
+Then install `dotenv` package:
+```bash
+npm install dotenv
+```
+
+And load it in your service (already implemented in the code):
+```javascript
+require('dotenv').config();
+```
+
+## 🔍 Running Services as Background Processes
+
+To keep services running in the background, use PM2:
+
+```bash
+# Install PM2 globally
+npm install -g pm2
+
+# Start User Service
+cd user-service
 pm2 start server.js --name user-service
 
-# Make it auto-start on reboot
-pm2 startup
-pm2 save
-```
-
-### Step 5: Deploy Product Service on VM2
-
-First, get VM1's IP address:
-```bash
-# On VM1
-ip addr show
-# Note the IP address (e.g., 10.0.2.4)
-```
-
-Then deploy Product Service:
-```bash
-# SSH into VM2
+# Start Product Service with environment variable
 cd product-service
+pm2 start server.js --name product-service --env USER_SERVICE_URL=http://<user-service-ip>:3001
 
-# Set the User Service URL
-export USER_SERVICE_URL=http://<VM1-IP>:3001
+# Start API Gateway with environment variables
+cd api-gateway
+pm2 start server.js --name api-gateway --env USER_SERVICE_URL=http://<user-service-ip>:3001 --env PRODUCT_SERVICE_URL=http://<product-service-ip>:3002
 
-# Install and start
-npm install
-npm start
+# View all running services
+pm2 list
 
-# Or with PM2
-pm2 start server.js --name product-service -- USER_SERVICE_URL=http://<VM1-IP>:3001
+# View logs
+pm2 logs
+
+# Make services auto-start on reboot
 pm2 startup
 pm2 save
 ```
 
-### Step 6: Test from Host Machine
 
-Get the IP addresses of both VMs and test:
-
-```bash
-# Test User Service (VM1)
-curl http://<VM1-IP>:3001/health
-curl http://<VM1-IP>:3001/api/users
-
-# Test Product Service (VM2)
-curl http://<VM2-IP>:3002/health
-curl http://<VM2-IP>:3002/api/products
-
-# Test inter-service communication
-curl http://<VM2-IP>:3002/api/products/1/with-owner
-```
 
 ## 🔧 Troubleshooting
 
-### Can't connect to services from host
+### Can't connect to services
 
-1. Check firewall on VMs:
+1. Check if service is running:
+```bash
+pm2 list
+# or
+ps aux | grep node
+```
+
+2. Check firewall rules (if running on server):
 ```bash
 sudo ufw allow 3001
 sudo ufw allow 3002
+sudo ufw allow 3000
 ```
 
-2. Ensure services are listening on 0.0.0.0:
+3. Ensure services are listening on correct interface:
 ```bash
 netstat -tulpn | grep node
+# or
+ss -tulpn | grep node
 ```
 
 ### Inter-service communication fails
 
-1. Verify VM1 IP in Product Service:
+1. Verify environment variables are set correctly:
 ```bash
-# On VM2
 echo $USER_SERVICE_URL
+echo $PRODUCT_SERVICE_URL
 ```
 
-2. Test connectivity:
+2. Test connectivity between services:
 ```bash
-# From VM2
-curl http://<VM1-IP>:3001/health
+# From Product Service server, test User Service
+curl http://<user-service-ip>:3001/health
+
+# From API Gateway server, test both services
+curl http://<user-service-ip>:3001/health
+curl http://<product-service-ip>:3002/health
 ```
 
-### Service crashes on VM
-
-Check logs:
+3. Check service logs for errors:
 ```bash
 pm2 logs product-service
+pm2 logs api-gateway
 ```
+
+### Service crashes or exits
+
+Check logs and restart:
+```bash
+# View logs
+pm2 logs <service-name>
+
+# Restart service
+pm2 restart <service-name>
+
+# Delete and restart
+pm2 delete <service-name>
+pm2 start server.js --name <service-name>
+```
+
+### Port already in use
+
+```bash
+# Find process using the port
+lsof -i :3001
+
+# Kill the process
+kill -9 <PID>
+```
+
 
 ## 📊 Microservice Principles Demonstrated
 
@@ -381,18 +436,20 @@ microservice-vcc/
 └── README.md               # This file
 ```
 
+
 ## 🎥 Video Demo Checklist
 
 For your assignment video, demonstrate:
 
-1. ✅ VirtualBox VM creation and configuration
-2. ✅ Network setup between VMs
-3. ✅ Node.js installation on VMs
-4. ✅ Service deployment on separate VMs
-5. ✅ Testing health checks
-6. ✅ CRUD operations on both services
-7. ✅ Inter-service communication (product with owner)
-8. ✅ Show service logs and PM2 status
+1. ✅ Service architecture overview
+2. ✅ Starting all three services (User, Product, API Gateway)
+3. ✅ Environment variable configuration for service discovery
+4. ✅ Testing health checks on all services
+5. ✅ CRUD operations via API Gateway
+6. ✅ Dashboard endpoint (data aggregation)
+7. ✅ User with products endpoint (cross-service communication)
+8. ✅ Service logs using PM2
+
 
 ## 📄 License
 
