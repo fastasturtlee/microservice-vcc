@@ -163,16 +163,32 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
-// Get product with owner (inter-service communication demo)
+// Get product with owner (aggregation at gateway level)
 app.get('/api/products/:id/with-owner', async (req, res) => {
   try {
-    const response = await axios.get(`${PRODUCT_SERVICE_URL}/api/products/${req.params.id}/with-owner`);
-    res.status(200).json(response.data);
+    const productId = parseInt(req.params.id);
+    
+    // Get product details from Product Service
+    const productResponse = await axios.get(`${PRODUCT_SERVICE_URL}/api/products/${productId}`);
+    const product = productResponse.data.data;
+    
+    // Get owner details from User Service
+    const userResponse = await axios.get(`${USER_SERVICE_URL}/api/users/${product.ownerId}`);
+    const owner = userResponse.data.data;
+    
+    res.status(200).json({
+      success: true,
+      message: 'Product with owner information aggregated at gateway',
+      data: {
+        ...product,
+        owner: owner
+      }
+    });
   } catch (error) {
-    console.error('Error calling Product Service:', error.message);
+    console.error('Error aggregating product with owner:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: 'Error communicating with Product Service',
+      message: 'Error aggregating product with owner information',
       error: error.response?.data?.message || error.message
     });
   }

@@ -1,11 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 
 // Middleware
 app.use(cors());
@@ -33,8 +31,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'UP', 
     service: 'Product Service',
-    timestamp: new Date().toISOString(),
-    userServiceUrl: USER_SERVICE_URL
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -75,44 +72,7 @@ app.get('/api/products/:id', (req, res) => {
   });
 });
 
-// Get product with owner information (demonstrates inter-service communication)
-app.get('/api/products/:id/with-owner', async (req, res) => {
-  const id = parseInt(req.params.id);
-  const product = products.find(p => p.id === id);
-  
-  if (!product) {
-    return res.status(404).json({
-      success: false,
-      message: `Product with ID ${id} not found`
-    });
-  }
-  
-  try {
-    // Call User Service to get owner information
-    const userResponse = await axios.get(`${USER_SERVICE_URL}/api/users/${product.ownerId}`);
-    
-    const productWithOwner = {
-      ...product,
-      owner: userResponse.data.data
-    };
-    
-    res.status(200).json({
-      success: true,
-      data: productWithOwner,
-      message: 'Product retrieved with owner information from User Service'
-    });
-  } catch (error) {
-    console.error('Error fetching user data:', error.message);
-    
-    // Return product without owner info if User Service is unavailable
-    res.status(200).json({
-      success: true,
-      data: product,
-      warning: 'Could not fetch owner information from User Service',
-      error: error.response?.data?.message || error.message
-    });
-  }
-});
+
 
 // Create new product
 app.post('/api/products', (req, res) => {
@@ -243,6 +203,5 @@ app.listen(PORT, () => {
   console.log(`📡 Port: ${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
   console.log(`📚 API Base: http://localhost:${PORT}/api/products`);
-  console.log(`🔗 User Service URL: ${USER_SERVICE_URL}`);
   console.log('='.repeat(50));
 });

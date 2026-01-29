@@ -6,9 +6,9 @@ A three-service microservice architecture with API Gateway pattern built with No
 
 This project consists of three independent microservices following the API Gateway pattern:
 
-- **API Gateway** (Port 3000) - Single entry point for all client requests
-- **User Service** (Port 3001) - Manages user data
-- **Product Service** (Port 3002) - Manages products and demonstrates inter-service communication
+- **API Gateway** (Port 3000) - Single entry point, handles routing and data aggregation
+- **User Service** (Port 3001) - Manages user data independently
+- **Product Service** (Port 3002) - Manages products independently
 
 ```
                     ┌──────────────┐
@@ -19,15 +19,17 @@ This project consists of three independent microservices following the API Gatew
               ┌────────────────────────┐
               │    API Gateway         │
               │    Port: 3000          │
+              │  (Data Aggregation)    │
               └────────┬───────────────┘
                        │
           ┌────────────┼────────────┐
           │                         │
           ▼                         ▼
 ┌─────────────────┐       ┌─────────────────┐
-│ User Service◄───┼───────┤ Product Service │
+│ User Service    │       │ Product Service │
 │ Port: 3001      │       │ Port: 3002      │
 └─────────────────┘       └─────────────────┘
+   (Independent)              (Independent)
 ```
 
 ## 📋 Prerequisites
@@ -60,10 +62,6 @@ User Service will run on port `3001`
 ```bash
 cd product-service
 npm install
-
-# Set User Service URL (if running on different servers)
-export USER_SERVICE_URL=http://<user-service-ip>:3001
-
 npm start
 ```
 
@@ -152,7 +150,7 @@ All Product Service endpoints are available through the gateway:
 | GET | `/api/products` | Get all products |
 | GET | `/api/products?category=value` | Filter by category |
 | GET | `/api/products/:id` | Get product by ID |
-| GET | `/api/products/:id/with-owner` | Get product with owner info |
+| GET | `/api/products/:id/with-owner` | **Get product with owner (gateway aggregation)** |
 | POST | `/api/products` | Create new product |
 | PUT | `/api/products/:id` | Update product |
 | DELETE | `/api/products/:id` | Delete product |
@@ -191,7 +189,6 @@ curl -X POST http://localhost:3001/api/users \
 | GET | `/api/products` | Get all products |
 | GET | `/api/products?category=Electronics` | Filter by category |
 | GET | `/api/products/:id` | Get product by ID |
-| GET | `/api/products/:id/with-owner` | Get product with owner info |
 | POST | `/api/products` | Create new product |
 | PUT | `/api/products/:id` | Update product |
 | DELETE | `/api/products/:id` | Delete product |
@@ -203,11 +200,12 @@ curl -X POST http://localhost:3002/api/products \
   -d '{"name":"Tablet","price":399.99,"category":"Electronics","stock":25,"ownerId":1}'
 ```
 
-**Example: Inter-Service Communication**
+**Example: Inter-Service Aggregation**
 ```bash
-# This endpoint makes Product Service call User Service
-curl http://localhost:3002/api/products/1/with-owner
+# This endpoint aggregates data from both services at the gateway level
+curl http://localhost:3000/api/products/1/with-owner
 ```
+
 
 
 ## � How API Gateway Gets Service IP Addresses
@@ -242,24 +240,6 @@ cd api-gateway
 npm start
 ```
 
-#### Product Service to User Service Communication
-
-The Product Service also needs to communicate with the User Service for features like getting product owner information:
-
-```bash
-USER_SERVICE_URL=http://<user-service-ip>:3001
-```
-
-**Example:**
-
-```bash
-# On the server running Product Service
-export USER_SERVICE_URL=http://192.168.1.10:3001
-
-cd product-service
-npm start
-```
-
 ### Service Discovery Methods
 
 1. **Environment Variables (Current Implementation)**
@@ -285,7 +265,6 @@ PORT=3000
 
 **product-service/.env:**
 ```env
-USER_SERVICE_URL=http://192.168.1.10:3001
 PORT=3002
 ```
 
@@ -311,9 +290,9 @@ npm install -g pm2
 cd user-service
 pm2 start server.js --name user-service
 
-# Start Product Service with environment variable
+# Start Product Service
 cd product-service
-pm2 start server.js --name product-service --env USER_SERVICE_URL=http://<user-service-ip>:3001
+pm2 start server.js --name product-service
 
 # Start API Gateway with environment variables
 cd api-gateway
@@ -409,12 +388,12 @@ kill -9 <PID>
 
 ## 📊 Microservice Principles Demonstrated
 
-✅ **Service Independence** - Each service runs independently  
+✅ **Service Independence** - Each service runs independently with no direct dependencies  
 ✅ **Single Responsibility** - Each service has one clear purpose  
-✅ **API-First Design** - Services communicate via REST APIs  
+✅ **API-First Design** - Services communicate via REST APIs through the gateway  
 ✅ **Decentralized Data** - Each service manages its own data  
 ✅ **Horizontal Scalability** - Services can scale independently  
-✅ **Fault Tolerance** - Product Service handles User Service failures gracefully
+✅ **Gateway Aggregation** - API Gateway handles all cross-service data aggregation
 
 ## 📁 Project Structure
 
@@ -449,12 +428,3 @@ For your assignment video, demonstrate:
 6. ✅ Dashboard endpoint (data aggregation)
 7. ✅ User with products endpoint (cross-service communication)
 8. ✅ Service logs using PM2
-
-
-## 📄 License
-
-MIT
-
-## 👨‍💻 Author
-
-Created for VCC Assignment - Microservice Deployment
